@@ -1,0 +1,70 @@
+name: InsightEye
+version: 1.0
+task: "InducedClick"
+
+label2name: "configs/label2name/inducedclick.json"
+
+arch:
+  type: efficentnet_b5
+  args:
+    num_classes: 4
+
+loader:
+  type: normdataloader
+  args:
+    img_fmt: rgb
+    dataset_name: path_label
+    train_data:
+      data_file: "data/train.txt"
+      is_train: true
+      data_aug:
+        image_resize: 380
+        random_hflip: true
+        random_vflip: false
+        gaussianblur: true
+        random_erase: true
+        brightness: 0.5
+        contrast: 0.5
+        hue: 0
+        random_crop: true
+        random_rotate: false
+    valid_data:
+      data_file: "data/valid.txt"
+      is_train: false
+      data_aug:
+        image_resize: 380
+    batch_size: 64
+    pin_memory: true
+    num_workers: 2
+
+solver:
+  n_gpus: 8
+  epochs: 120
+  optimizer:
+    type: SGD
+    args:
+      lr: 0.01
+      momentum: 0.9
+  lr_scheduler:
+    type: StepLR
+    args:
+      step_size: 50
+      gamma: 0.1
+  save_dir: "train_log"
+  ckpt_dir: "ckpt"
+  log_dir: "log"
+  save_freq:
+  valid_interval: 1
+  log_interval:
+  verbosity: 1
+  monitor: "valid_auc"
+  monitor_mode: "max"
+  tensorboardx: true
+  resume: ""
+  fix_random_seed:
+
+loss: cross_entry_loss
+metrics: common
+
+
+

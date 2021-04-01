@@ -1,0 +1,8 @@
+/data/merge.py
+/data/nohup.out
+/data/path_label.txt
+/data/*.txt
+/data/images
+/data/*.json
+/configs/logger_config
+/train_log/*
