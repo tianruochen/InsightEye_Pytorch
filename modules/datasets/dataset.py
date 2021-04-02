@@ -10,8 +10,9 @@ import numpy as np
 import traceback
 
 from PIL import Image
-from torchvision import transforms
 from torch.utils.data import Dataset
+
+from modules.datasets.argument import build_transform
 
 
 class PathLabel_Dataset(Dataset):
@@ -25,12 +26,12 @@ class PathLabel_Dataset(Dataset):
         self.is_train = dataset_cfg.is_train
         self.img_mean = [0.485, 0.456, 0.406]
         self.img_std = [0.229, 0.224, 0.225]
-        # self.tfms = self._build_tfms(**dataset_cfg.data_aug)
-        self.tfms = transforms.Compose([
-            transforms.Resize((int(380), int(380))),
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        ])
+        self.tfms = build_transform(dataset_cfg.data_aug)
+        # self.tfms = transforms.Compose([
+        #     transforms.Resize((int(380), int(380))),
+        #     transforms.ToTensor(),
+        #     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        # ])
         self.num_classes = self._get_num_class()
 
     def __getitem__(self, index):
@@ -55,35 +56,6 @@ class PathLabel_Dataset(Dataset):
         # print(data_file)
         with open(data_file, "r") as f:
             return [line.strip().split("\t") for line in f.readlines() if len(line.strip().split("\t")) == 2]
-
-    def _build_tfms(self, image_resize=380, random_hflip=False, random_vflip=False, random_crop=True,
-                    random_rotate=False, gaussianblur=False, random_erase=False, brightness=0.0, contrast=0.0, hue=0.0):
-        transform_list = []
-        if random_crop:
-            transform_list.append(transforms.Resize((int(image_resize * 1.1), int(image_resize * 1.1))))
-            transform_list.append(transforms.RandomCrop((int(image_resize), int(image_resize))))
-        else:
-            transform_list.append(transforms.Resize(int(image_resize), int(image_resize)))
-        if random_hflip and random.random() > 0.5:
-            transform_list.append(transforms.RandomHorizontalFlip())
-        if random_vflip and random.random() > 0.5:
-            transform_list.append(transforms.RandomVerticalFlip())
-        if random_rotate and random.random() > 0.5:
-            degree = random.randint(0, 90)
-            transform_list.append(transforms.RandomRotation(degrees=(-degree, degree)))
-        if gaussianblur and random.random() > 0.5:
-            transform_list.append(transforms.GaussianBlur(kernel_size=3))
-        if random_erase:
-            transform_list.append(transforms.RandomErasing())
-        if random.random() > 0.5:
-            brightness = np.clip(brightness, a_min=0.0, a_max=0.5)
-            contrast = np.clip(contrast, a_min=0.0, a_max=0.5)
-            hue = np.clip(hue, a_min=0.0, a_max=0.5)
-            transform_list.append(transforms.ColorJitter(brightness=brightness, contrast=contrast, hue=hue))
-        transform_list.append(transforms.ToTensor())
-        transform_list.append(transforms.Normalize(self.img_mean, self.img_std))
-        tfms = transforms.Compose(transform_list)
-        return tfms
 
 
 class ImageFold_Dataset(Dataset):

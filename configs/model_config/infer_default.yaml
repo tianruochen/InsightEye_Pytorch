@@ -2,18 +2,23 @@ basic:
   name: InsightEye
   version: 1.0
   task: "InducedClick"
+  n_gpus: 1
+  seed: 666
+  id2name: "onfigs/label2name/inducedclick.json"
 
 arch:
   type: efficentnet_b5
+  resume: ""
+  best_model: ""
   args:
     num_classes: 4
 
-env:
-  n_gpus: 1
-  img_resize: 380
-  label2name: "configs/label2name/inducedclick.json"
-  resume: ""
-
+loader:
+  type:
+    args:
+scheme:
+  result_dir: ""
+  tensorboardx: true
 
 
 

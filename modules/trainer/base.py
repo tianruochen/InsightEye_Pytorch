@@ -11,33 +11,29 @@ import logging
 import datetime
 
 import torch
-
+import random
+import numpy as np
 from modules.models import build_model
 
 
 class Base:
 
-    def __init__(self, basic, env, arch):
+    def __init__(self, basic, arch):
         self.basic = basic
-        self.env = env
         self.arch = arch
 
         # basic
         self.name = self.basic.name
         self.version = self.basic.version
         self.task = self.basic.task
+        self.seed = self.basic.seed
+        self.n_gpus = self.basic.n_gpus
         self.id2name_path = self.basic.id2name
 
-        # env
-        self.n_gpus = self.env.n_gpus
-        self.save_dir = self.env.save_dir
-        self.ckpt_dir = self.env.ckpt_dir
-        self.log_dir = self.env.log_idr
-        self.save_freq = self.env.save_freq
-        self.verbosity = self.env.verbosity
-        self.fix_random_seed = self.env.fix_random_seed
+        # set random seed
+        if self.seed:
+            self._fix_random_seed()
 
-        # set up logger
         self.logger = self._setup_logger()
         # set up device
         self.device, self.device_ids = self._setup_device(self.n_gpus)
@@ -58,6 +54,10 @@ class Base:
         elif self.arch.get("best_model", None):
             self._load_best_model(self.arch.best_model)
 
+    def _fix_random_seed(self):
+        random.seed(self.seed)
+        torch.random.seed()
+        np.random.seed(self.seed)
 
     def _setup_logger(self):
         logging.basicConfig(
@@ -66,7 +66,6 @@ class Base:
             format="[%(asctime)12s] [%(levelname)s] : %(message)s",
             handlers=[
                 logging.StreamHandler(),
-                logging.FileHandler(os.path.join(self.models_log_dir, "train.log"))
             ]
         )
         return logging.getLogger(self.__class__.__name__)

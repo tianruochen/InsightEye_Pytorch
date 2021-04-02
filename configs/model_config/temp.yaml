@@ -2,16 +2,10 @@ basic:
   name: InsightEye
   version: 1.0
   task: "InducedClick"
+  n_gpus: 4
+  seed: 666
   label2name_path: "configs/label2name/inducedclick.json"
 
-env:
-  n_gpus: 4
-  save_dir: "train_log"
-  ckpt_dir: "ckpt"
-  log_dir: "log"
-  save_freq: 1
-  verbosity: 2
-  fix_random_seed: true
 
 arch:
   type: efficentnet_b5
@@ -47,7 +41,7 @@ loader:
     pin_memory: true
     num_workers: 4
 
-solver:
+scheme:
   epochs: 120
   optimizer:
     type: SGD
@@ -61,9 +55,15 @@ solver:
       gamma: 0.1
   monitor: "valid_auc"
   monitor_mode: "max"
-  tensorboardx: true
   loss: cross_entry_loss
   metrics: common
+  save_root: "train_log"
+  ckpt_dir: "ckpt"
+  log_dir: "log"
+  save_freq: 1
+  verbosity: 2
+  tensorboardx: true
+
 
 
 

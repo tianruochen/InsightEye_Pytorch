@@ -15,21 +15,22 @@ loader:
     img_fmt: rgb
     dataset_name: path_label
     train_data:
-      data_file: "data/train.txt"
+      data_file: "data/train_imbalance.txt"
       is_train: true
       data_aug:
         image_resize: 380
-        random_hflip: true
-        random_vflip: false
-        gaussianblur: true
-        random_erase: true
-        brightness: 0.5
-        contrast: 0.5
-        hue: 0
         random_crop: true
         random_rotate: false
+        random_hflip: false
+        random_vflip: false
+        gaussianblur: false
+        random_erase: false
+        random_gamma: false
+        random_brightness: false
+        random_saturation: false
+        random_adjust_hue: false
     valid_data:
-      data_file: "data/valid.txt"
+      data_file: "data/valid_imbalance.txt"
       is_train: false
       data_aug:
         image_resize: 380

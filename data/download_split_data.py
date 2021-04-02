@@ -69,15 +69,18 @@ if __name__ == "__main__":
         print(f"label:{label} \t nums: {len(paths)}")
         nums = len(paths)
         random.shuffle(paths)
-        train_list += [path + "\t" + label + "\n" for path in paths[:int(min(nums, 5000) * 0.85)]]
-        test_list += [path + "\t" + label + "\n" for path in paths[int(min(nums, 5000) * 0.85): int(min(nums, 5000) * 0.85) + int(min(nums, 5000) * 0.15)]]
+        # train_list += [path + "\t" + label + "\n" for path in paths[:int(min(nums, 5000) * 0.85)]]
+        # test_list += [path + "\t" + label + "\n" for path in paths[int(min(nums, 5000) * 0.85): int(min(nums, 5000) * 0.85) + int(min(nums, 5000) * 0.15)]]
+
+        train_list += [path + "\t" + label + "\n" for path in paths[:int(nums * 0.85)]]
+        test_list += [path + "\t" + label + "\n" for path in paths[int(nums * 0.85):]]
     random.shuffle(train_list)
     random.shuffle(test_list)
 
     # train.txt 保存 path + "\t" + label
-    with open("train.txt", "w") as f:
+    with open("train_imbalance.txt", "w") as f:
         f.writelines(train_list)
-    with open("valid.txt", "w") as f:
+    with open("valid_imbalance.txt", "w") as f:
         f.writelines(test_list)
 
     print("done")
