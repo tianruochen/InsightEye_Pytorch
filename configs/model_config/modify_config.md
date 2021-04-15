@@ -1,5 +1,5 @@
 > modify default.yaml for training
-```
+```angular2
 name: InsightEye
 version: 1.0
 task: "InducedClick"            #  change to your task name
@@ -74,8 +74,10 @@ metrics: common
 
 ```
 
+
 > modify infer_default.yaml for inference
-```
+```angular2
+
 basic:
   name: InsightEye
   version: 1.0

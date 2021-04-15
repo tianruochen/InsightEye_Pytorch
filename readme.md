@@ -77,12 +77,12 @@ format(path   label)(Separated by '\t'):
 ## Train
 To train a new model, use the main.py script.
 
-> use default params (all parameters setted in model_config file)
-```use default params (all parameters setted in model_config file)
+use default params (all parameters setted in model_config file)
+```
 python train_net.py --model_config XXX 
 ```
-> use custom params
-```use custom params
+use custom params
+```
 python train_net.py --model_config XXX --batch_size XXX --learning_rate XXX ...
 # custom params
 # --batch_size: int, [training batch size, None to use config setting]
