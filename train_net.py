@@ -17,19 +17,19 @@ def parse_args():
 
     parser = argparse.ArgumentParser(description="Classification Network Training Script")
 
-    parser.add_argument("--model_config", type=str, default="configs/model_config/default.yaml", help="path to config file")
+    parser.add_argument("--model_config", type=str, default="configs/model_config/screen_classification.yaml", help="path to config file")
     parser.add_argument("--batch_size", type=int, default=None, help="training batch size, None to use config setting")
     parser.add_argument("--learning_rate", type=float, default=None,
                         help="training learning rate, None to use config setting")
     parser.add_argument("--resume", type=str, default=None, help="path to pretrain weights")
-    parser.add_argument("--n_gpu", type=bool, default=True, help="default use gpu")
+    parser.add_argument("--n_gpu", type=int, default=True, help="default use gpu")
     parser.add_argument("--epoch", type=int, default=None, help="epoch number, 0 for read from config file")
     parser.add_argument("--save_dir", type=str, default=None,
                         help="directory name to save train snapshoot, None to use config setting")
     parser.add_argument("--valid_interval", type=int, default=1, help="validation epoch interval, 0 for no validation")
     parser.add_argument("--log_interval", type=int, default=1, help="mini batch interval to log")
     parser.add_argument("--fix_random_seed", type=bool, default=False,
-                        help="If set True, enable continuous evaluation job")
+                        help="If set True, set rand seed")
 
     args = parser.parse_args()
     return args

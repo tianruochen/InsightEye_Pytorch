@@ -4,21 +4,34 @@ basic:
   task: "InducedClick"
   n_gpus: 1
   seed: 666
-  id2name: "onfigs/label2name/inducedclick.json"
+  id2name: "configs/label2name/inducedclick.json"
 
 arch:
   type: efficentnet_b5
-  resume: ""
-  best_model: ""
+  resume:
+  best_model: "/data/changqing/InsightEye_Pytorch/train_log/InducedClick_efficentnet_b5/0401_203927/ckpt/model_best_weight.pth"
   args:
     num_classes: 4
 
 loader:
-  type:
-    args:
+  data_aug:
+    image_resize: 380
+  type: normdataloader
+  args:
+    img_fmt: rgb
+    dataset_name: path_label
+    infer_data:
+      data_file: "data/valid_imbalance.txt"
+      is_train: false
+      data_aug:
+        image_resize: 380
+    batch_size: 64
+    pin_memory: true
+    num_workers: 2
 scheme:
+  use_loader: false
   result_dir: ""
-  tensorboardx: true
+  tensorboardx: false
 
 
 

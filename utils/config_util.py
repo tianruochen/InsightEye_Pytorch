@@ -56,8 +56,9 @@ def merge_config_bak(cfg, args_dict):
             if hasattr(scheme_cfg_node, key):
                 setattr(scheme_cfg_node, key, value)
     except Exception as e:
-        print(e)
-        traceback.print_exc()
+        # print(e)
+        # traceback.print_exc()
+        pass
     return cfg
 
 

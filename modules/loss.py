@@ -8,7 +8,8 @@ import torch
 import torch.nn as nn
 
 LOSS_FACTORY = {
-    "cross_entry_loss": nn.CrossEntropyLoss(weight=torch.tensor([1.2, 1.5, 3.0, 1.0]).cuda())
+    #"cross_entry_loss": nn.CrossEntropyLoss(weight=torch.tensor([1.2, 1.5, 3.0, 1.0]).cuda())
+    "cross_entry_loss": nn.CrossEntropyLoss()
 }
 
 

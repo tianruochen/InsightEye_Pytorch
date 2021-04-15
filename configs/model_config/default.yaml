@@ -6,6 +6,8 @@ label2name: "configs/label2name/inducedclick.json"
 
 arch:
   type: efficentnet_b5
+  resume: ""
+  best_model: ""
   args:
     num_classes: 4
 
@@ -15,7 +17,7 @@ loader:
     img_fmt: rgb
     dataset_name: path_label
     train_data:
-      data_file: "data/train_imbalance.txt"
+      data_file: "data/train.txt"
       is_train: true
       data_aug:
         image_resize: 380
@@ -30,7 +32,7 @@ loader:
         random_saturation: false
         random_adjust_hue: false
     valid_data:
-      data_file: "data/valid_imbalance.txt"
+      data_file: "data/valid.txt"
       is_train: false
       data_aug:
         image_resize: 380
@@ -58,13 +60,13 @@ solver:
   valid_interval: 1
   log_interval:
   verbosity: 1
-  monitor: "valid_auc"
+  monitor: "valid_acc"
   monitor_mode: "max"
   tensorboardx: true
   resume: ""
   fix_random_seed:
 
-loss: cross_entry_loss
+loss: class_balance_loss
 metrics: common
 
 

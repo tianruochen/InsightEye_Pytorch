@@ -16,7 +16,7 @@ from time import time
 from modules.models import build_model
 from modules.datasets import build_dataloader
 from modules.solver import build_optimizer, build_lr_scheduler
-from modules.loss import build_loss
+from modules.losses import build_loss
 from modules.metric import build_metrics
 from utils.comm_util import ResultsLog
 from utils.visualization import WriterTensorboardX
@@ -70,7 +70,7 @@ class BaseTrainer:
         self.model.to(self.device)
 
         # build loss
-        self.loss = build_loss(self.config.loss)
+        self.loss = build_loss(self.config.loss, self.num_classes)
         # build metrics
         self.metrics = build_metrics(self.config.metrics, self.num_classes)
 
