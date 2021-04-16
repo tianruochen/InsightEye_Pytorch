@@ -77,26 +77,26 @@ metrics: common
 
 
 > modify infer_default.yaml for inference
-```angular2
 
+```angular2
 basic:
   name: InsightEye
   version: 1.0
-  task: "InducedClick"                                 # change to your task name
+  task: "InducedClick"                                  change to your task name
   n_gpus: 1
   seed: 666
-  id2name: "configs/label2name/inducedclick.json"      # must change to your label2name.json (!!!)
+  id2name: "configs/label2name/inducedclick.json"       must change to your label2name.json (!!!)
 
 arch:
   type: efficentnet_b5
   resume:
-  best_model: "..../ckpt/model_best_weight.pth"        # must change to your best model path (!!!)
+  best_model: "..../ckpt/model_best_weight.pth"         must change to your best model path (!!!)
   args:
-    num_classes: 4                                     # consistent to your task
+    num_classes: 4                                      consistent to your task
 
 loader:
   data_aug:
-    image_resize: 380                                  # consistent to your model
+    image_resize: 380                                   consistent to your model
   type: normdataloader
   args:
     img_fmt: rgb
