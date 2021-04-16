@@ -6,7 +6,7 @@
  
 import os
 import argparse
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3,4,5,6,7,8,9"
+os.environ["CUDA_VISIBLE_DEVICES"] = "4,5,6,7,8"
 
 from modules.trainer.trainer import Trainer
 from utils.comm_util import setup_logger, setup_device

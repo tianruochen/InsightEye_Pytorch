@@ -43,16 +43,18 @@ class Predictor(Base):
                 with open(input, "r") as f:
                     lines = f.readlines()
                     for line in lines:
-                        if line.strip().split("\t") == 2:
+                        if len(line.strip().split("\t")) == 2:
                             img_path, img_label = line.strip().split("\t")
-                        elif line.strip().split("\t") == 1:
+                        elif (line.strip().split("\t")) == 1:
                             img_path = line.strip()
                             img_label = None
+                        else:
+                            continue
                         image_list.append(img_path)
                         label_list.append(img_label)
 
-                    image_list, label_list = zip(*[item.strip().split("\t") for item in f.readlines() if
-                                                   len(item.strip().split("\t")) == 2])
+                    # image_list, label_list = zip(*[item.strip().split("\t") for item in f.readlines() if
+                    #                                len(item.strip().split("\t")) == 2])
         if not label_list:
             label_list = [None] * len(image_list)
         return image_list, label_list
@@ -76,7 +78,7 @@ class Predictor(Base):
             logits = self.model(image_tensor)
             pd_score = F.softmax(logits, dim=1).squeeze(0).cpu().tolist()
             pd_label = str(np.argmax(pd_score))
-            print(label_list[i])
+            # print(label_list[i])
             gt_label = label_list[i]
             if gt_label != pd_label and self.writer_infer:
                 self.writer_infer.add_image(

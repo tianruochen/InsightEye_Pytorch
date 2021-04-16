@@ -146,8 +146,10 @@ class BaseTrainer:
             self.logger.info("run models on CPU.")
         else:
             logging.info(f"run model on {n_gpu_need} gpu(s)")
-            gpu_list_str = os.environ["CUDA_VISIBLE_DEVICES"]
-            gpu_list_ids = [int(i) for i in gpu_list_str.split(",")][:n_gpu_need]
+            # gpu_list_str = os.environ["CUDA_VISIBLE_DEVICES"]
+            # gpu_list_ids = [int(i) for i in gpu_list_str.split(",")][:n_gpu_need]
+            gpu_list_ids = [int(i) for i in range(n_gpu_need)]
+
         device = torch.device("cuda" if n_gpu_need > 0 else "cpu")
         return device, gpu_list_ids
 
