@@ -132,8 +132,8 @@ refer: [here](https://doc2.ixiaochuan.cn/pages/viewpage.action?pageId=8410829)
  - build your dataset (please refer [build_data.md](data/build_data.md))
  - modify config file (please refer [modify_config.md](configs/model_config/modify_config.md))
  - run 'python train_net.py'
+ 
 ## Contributing
 
 ## License
 
-[MIT © Richard McRichface.](../LICENSE)
