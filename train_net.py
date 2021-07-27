@@ -17,7 +17,7 @@ def parse_args():
 
     parser = argparse.ArgumentParser(description="Classification Network Training Script")
 
-    parser.add_argument("--model_config", type=str, default="configs/model_config/induceclick_binary.yaml", help="path to config file")
+    parser.add_argument("--model_config", type=str, default="configs/model_config/image_tag_multi_class.yaml", help="path to config file")
     parser.add_argument("--batch_size", type=int, default=None, help="training batch size, None to use config setting")
     parser.add_argument("--learning_rate", type=float, default=None,
                         help="training learning rate, None to use config setting")
