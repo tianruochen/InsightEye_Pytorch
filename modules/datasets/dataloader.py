@@ -12,10 +12,15 @@ from modules.datasets.dataset import build_dataset
 
 class NormDataLoader:
     def __init__(self, img_fmt="rgb", dataset_name="path_label", train_data=None,
-                 valid_data=None, batch_size=8, num_workers=4, pin_memory=False):
+                 valid_data=None, batch_size=8, num_workers=4, pin_memory=False, task_type="multi_lalel"):
         self.img_fmt = img_fmt
+        self.task_type = task_type
         self.train_data = train_data
         self.valid_data = valid_data
+        if self.train_data:
+            self.train_data["task_type"] = task_type
+        if self.valid_data:
+            self.valid_data["task_type"] = task_type
         self.batch_size = batch_size
         self.pin_memory = pin_memory
         self.num_workers = num_workers

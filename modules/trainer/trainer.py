@@ -80,11 +80,18 @@ class Trainer(BaseTrainer):
             batch_accuracy, batch_matched = self.metrics.update(output, target, loss.item())
             # total_loss += loss.item()
             # total_metrics += self._eval_metrics(output, target)
-            self.logger.info(
-                "Epoch:{:3d} training batch:{:4}/{:4} -- loss:{:.4f} lr:{:.5f} accuracy:{:.4f} specific：[{:3}/{:3}]".format(
-                    epoch, batch_idx, batch_count, loss.item(),
-                    self.optimizer.state_dict()['param_groups'][0]['lr'], batch_accuracy, batch_matched,
-                    target.data.numel()))
+            if self.task_type == "multi_class":
+                self.logger.info(
+                    "Epoch:{:3d} training batch:{:4}/{:4} -- loss:{:.4f} lr:{:.5f} accuracy:{:.4f} specific：[{:3}/{:3}]".format(
+                        epoch, batch_idx, batch_count, loss.item(),
+                        self.optimizer.state_dict()['param_groups'][0]['lr'], batch_accuracy, batch_matched,
+                        target.data.numel()))
+            elif self.task_type == "multi_label":
+                self.logger.info(
+                    "Epoch:{:3d} training batch:{:4}/{:4} -- loss:{:.4f} lr:{:.5f} batch_top@1_acc:{:.4f} specific：[{:3}/{:3}]".format(
+                        epoch, batch_idx, batch_count, loss.item(),
+                        self.optimizer.state_dict()['param_groups'][0]['lr'], batch_accuracy, batch_matched,
+                        target.shape[0]))
 
             # 扩展output 与target的维度 用于tensorboard输出
             # (bs,h,w) -- > (bs, 3, h, w)
@@ -105,11 +112,12 @@ class Trainer(BaseTrainer):
             poly_lr_scheduler(self.optimizer, self.init_lr, curr_iter, self.max_iter, power=0.9)
 
         # Record log
-        avg_loss, avg_acc, avg_auc, acc_for_class = self.metrics.report()
+        avg_loss, avg_acc, avg_auc, acc_for_class, auc_for_class = self.metrics.report()
 
         log = {
             'train_loss': avg_loss,
             'train_acc': avg_acc,
+            "train_auc_for_class": auc_for_class,
             "train_auc": avg_auc,
             "train_acc_for_class": acc_for_class
         }
@@ -119,8 +127,12 @@ class Trainer(BaseTrainer):
             self.writer_train.add_scalar('train_loss', avg_loss)
             self.writer_train.add_scalar("train_acc", avg_acc)
             self.writer_train.add_scalar("train_auc", avg_auc)
-            for class_i, class_acc in enumerate(acc_for_class):
-                self.writer_train.add_scalar('train_acc_for_/%s' % (self.label2name[str(class_i)]), class_acc)
+            if acc_for_class:
+                for class_i, class_acc in enumerate(acc_for_class):
+                    self.writer_train.add_scalar('train_acc_for_/%s' % (self.label2name[str(class_i)]), class_acc)
+            if auc_for_class:
+                for class_i, class_auc in enumerate(auc_for_class):
+                    self.writer_train.add_scalar('train_acc_for_/%s' % (self.label2name[str(class_i)]), class_auc)
 
             if self.verbosity >= 2:
                 for i in range(len(self.optimizer.param_groups)):
@@ -180,13 +192,16 @@ class Trainer(BaseTrainer):
                 #         self.writer_valid.add_image('valid/output', make_grid(output.cpu(), nrow=4, normalize=True))
 
         # Record log
-        avg_loss, avg_acc, avg_auc, acc_for_class = self.metrics.report()
+        # if the task_type == "multi_label", the ava_acc is top@1_acc
+        avg_loss, avg_acc, avg_auc, acc_for_class, auc_for_class = self.metrics.report()
 
         val_log = {
             'valid_loss': avg_loss,
             'valid_acc': avg_acc,
             "valid_auc": avg_auc,
-            "valid_acc_for_class": acc_for_class
+            "valid_acc_for_class": acc_for_class,
+            "valid_auc_for_class": auc_for_class,
+
         }
 
         # Write validating result to TensorboardX
@@ -194,6 +209,11 @@ class Trainer(BaseTrainer):
             self.writer_train.add_scalar('valid_loss', avg_loss)
             self.writer_train.add_scalar("valid_acc", avg_acc)
             self.writer_train.add_scalar("valid_auc", avg_auc)
-            for class_i, class_acc in enumerate(acc_for_class):
-                self.writer_train.add_scalar('valid_acc_for_/%s' % (self.label2name[str(class_i)]), class_acc)
+            if acc_for_class:
+                for class_i, class_acc in enumerate(acc_for_class):
+                    self.writer_train.add_scalar('valid_acc_for_/%s' % (self.label2name[str(class_i)]), class_acc)
+            if auc_for_class:
+                for class_i, class_auc in enumerate(auc_for_class):
+                    self.writer_train.add_scalar('train_acc_for_/%s' % (self.label2name[str(class_i)]), class_auc)
+
         return val_log

@@ -6,7 +6,7 @@
  
 import os
 import argparse
-os.environ["CUDA_VISIBLE_DEVICES"] = "4,5,6,7,8"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3,4,5,6,7"
 
 from modules.trainer.trainer import Trainer
 from utils.comm_util import setup_logger, setup_device
@@ -17,7 +17,7 @@ def parse_args():
 
     parser = argparse.ArgumentParser(description="Classification Network Training Script")
 
-    parser.add_argument("--model_config", type=str, default="configs/model_config/screen_classification.yaml", help="path to config file")
+    parser.add_argument("--model_config", type=str, default="configs/model_config/induceclick_binary.yaml", help="path to config file")
     parser.add_argument("--batch_size", type=int, default=None, help="training batch size, None to use config setting")
     parser.add_argument("--learning_rate", type=float, default=None,
                         help="training learning rate, None to use config setting")

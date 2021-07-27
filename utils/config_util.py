@@ -13,7 +13,7 @@ import logging
 
 # logger = logging.getLogger(__name__)
 
-__all__ = ["parse_config", "merge_config", "print_config"]
+__all__ = ["parse_config", "merge_config", "print_config", "merge_config_bak"]
 
 
 class AttrDict(dict):

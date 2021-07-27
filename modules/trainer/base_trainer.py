@@ -13,6 +13,7 @@ import datetime
 import torch
 
 from time import time
+from collections import deque
 from modules.models import build_model
 from modules.datasets import build_dataloader
 from modules.solver import build_optimizer, build_lr_scheduler
@@ -28,6 +29,7 @@ class BaseTrainer:
     def __init__(self, config):
         self.config = config
         self.task = self.config.task
+        self.task_type = self.config.task_type
 
         # Setup directory for checkpoint saving
         start_time = datetime.datetime.now().strftime("%m%d_%H%M%S")
@@ -43,12 +45,19 @@ class BaseTrainer:
         os.makedirs(self.checkpoint_dir, exist_ok=True)
         os.makedirs(self.models_log_dir, exist_ok=True)
 
+        # save config
+        self.config_save_path = os.path.join(self.models_log_dir, 'config.json')
+        self.results_log_path = os.path.join(self.models_log_dir, 'results_log.json')
+        with open(self.config_save_path, 'w') as handle:
+            json.dump(config, handle, indent=4, sort_keys=False)
+
         self.logger = self._setup_logger()
         self.device, self.device_ids = self._setup_device(self.config.solver.n_gpus)
 
         # print(self.device)
         # print(self.device_ids)
         # build dataloader
+        self.config.loader.args["task_type"] = self.task_type
         self.train_loader, self.valid_loader = build_dataloader(self.config.loader.type, self.config.loader.args)
         assert self.train_loader.dataset.num_classes == self.valid_loader.dataset.num_classes, \
             f"train class num != valid class num:  {self.train_loader.dataset.num_classes} != " \
@@ -70,6 +79,8 @@ class BaseTrainer:
         self.model.to(self.device)
 
         # build loss
+        if self.task_type == "multi_label":
+            assert self.config.loss in ["bce_loss", "bce_with_logits_loss"]
         self.loss = build_loss(self.config.loss, self.num_classes)
         # build metrics
         self.metrics = build_metrics(self.config.metrics, self.num_classes)
@@ -103,11 +114,9 @@ class BaseTrainer:
             self.writer_train = WriterTensorboardX(writer_train_dir, self.logger, self.config.solver.tensorboardx)
             self.writer_valid = WriterTensorboardX(writer_valid_dir, self.logger, self.config.solver.tensorboardx)
 
-        self.config_save_path = os.path.join(self.models_log_dir, 'config.json')
-        self.results_log_path = os.path.join(self.models_log_dir, 'results_log.json')
-        with open(self.config_save_path, 'w') as handle:
-            json.dump(config, handle, indent=4, sort_keys=False)
-
+        # save deque
+        self.save_max = self.config.solver.save_max
+        self.save_deque = deque()
         # Resume
         self.resume = self.config.solver.resume
         if self.resume:
@@ -138,10 +147,10 @@ class BaseTrainer:
             self.logger.warning(
                 "Warning: There\'s no GPU available on this machine, training will be performed on CPU.")
         elif n_gpu_need > n_gpu_available:
-            n_gpu_need = n_gpu_available
             self.logger.warning(
                 "Warning: The number of GPU\'s configured to use is {}, but only {} are available on this machine.".format(
                     n_gpu_need, n_gpu_available))
+            n_gpu_need = n_gpu_available
         if n_gpu_need == 0:
             self.logger.info("run models on CPU.")
         else:
@@ -236,9 +245,9 @@ class BaseTrainer:
         :param save_best: if True, rename the saved checkpoint to 'model_best.pth'
         """
         # Construct savedict
-        arch = type(self.model).__name__
+        # arch = type(self.model).__name__  DataParallel
         state = {
-            'arch': arch,
+            'arch': self.config.arch.type,
             'epoch': epoch,
             'results_log': self.results_log,
             'state_dict': self.model.state_dict(),
@@ -247,19 +256,27 @@ class BaseTrainer:
             # 'config': self.config
         }
 
+        monitor_best = round(self.monitor_best, 3)
         # Save checkpoint for each epoch
         if self.save_freq is not None:  # Use None mode to avoid over disk space with large models
             if epoch % self.save_freq == 0:
-                filename = os.path.join(self.checkpoint_dir, 'epoch{}.pth'.format(epoch))
+                filename = os.path.join(self.checkpoint_dir, f"{self.task}_{self.config.arch.type}_epoch{epoch}_{self.monitor}{monitor_best}.pth")
                 torch.save(state, filename)
                 self.logger.info("Saving checkpoint at {}".format(filename))
 
+
         # Save the best checkpoint
         if save_best:
-            best_path = os.path.join(self.checkpoint_dir, 'model_best.pth')
+            if len(self.save_deque) >= self.save_max:
+                need_removed_checkpoint = self.save_deque.popleft()
+                os.remove(need_removed_checkpoint)
+            checkpoint_name = f"{self.task}_{self.config.arch.type}_epoch{epoch}_{self.monitor}{monitor_best}.pth"  #  arch + "_epoch" + str(epoch) + "_" + self.monitor
+            best_path = os.path.join(self.checkpoint_dir, checkpoint_name)
             torch.save(state, best_path)
+
             best_weight_path = os.path.join(self.checkpoint_dir, "model_best_weight.pth")
             torch.save(self.model.state_dict(), best_weight_path)
+            self.save_deque.append(best_path)
             self.logger.info("Saving current best at {}".format(best_path))
         else:
             self.logger.info("Monitor is not improved from %f" % (self.monitor_best))

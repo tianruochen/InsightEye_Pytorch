@@ -1,0 +1,74 @@
+name: InsightEye
+version: 1.0
+task: "ImageTag"
+task_type: "multi_class"
+label2name: "configs/label2name/image_tag.json"
+
+arch:
+  type: efficentnet_b5
+  resume: ""
+  best_model: ""
+  args:
+    num_classes: 26
+
+loader:
+  type: normdataloader
+  args:
+    img_fmt: rgb
+    dataset_name: path_label
+    train_data:
+      data_file: "/data1/changqing/ZyImage_Data/annotations/image_tag_train_dataset_shuffled.txt"
+      is_train: true
+      data_aug:
+        image_resize: 380
+        random_crop: true
+        random_rotate: false
+        random_hflip: true
+        random_vflip: false
+        gaussianblur: false
+        random_erase: false
+        random_gamma: false
+        random_brightness: false
+        random_saturation: false
+        random_adjust_hue: false
+    valid_data:
+      data_file: "/data1/changqing/ZyImage_Data/annotations/image_tag_valid_dataset_shuffled.txt"
+      is_train: false
+      data_aug:
+        image_resize: 380
+    batch_size: 64
+    pin_memory: true
+    num_workers: 2
+
+solver:
+  n_gpus: 8
+  epochs: 30
+  optimizer:
+    type: SGD
+    args:
+      lr: 0.01
+      momentum: 0.9
+  lr_scheduler:
+    type: StepLR
+    args:
+      step_size: 12
+      gamma: 0.1
+  save_dir: "train_log"
+  ckpt_dir: "ckpt"
+  log_dir: "log"
+  save_max: 5
+  save_freq:
+  valid_interval: 1
+  log_interval:
+  verbosity: 1
+  monitor: "valid_acc"
+  monitor_mode: "max"
+  tensorboardx: true
+  resume: ""
+  fix_random_seed:
+
+loss: cross_entry_loss
+metrics: common
+
+
+

@@ -41,7 +41,7 @@ if __name__ == "__main__":
     # args = parser.parse_args()
     #
     # ori_file = args.ori_file
-    # with open(ori_file, "r") as f:
+    # with open(oricim _file, "r") as f:
     #     urls = [line.strip() for line in f.readlines()]
     # # 根据urls下载图片，并保留url到图片路径的映射关系
     # print(len(urls))

@@ -18,7 +18,6 @@ from modules.datasets.argument import build_transform
 class PathLabel_Dataset(Dataset):
 
     def __init__(self, dataset_cfg):
-        self.img_label_list = self._parse_data_file(dataset_cfg.data_file)
         # no return
         # random.shuffle(self.img_label_list)
         # self.img_label_list = self.img_label_list[:1000]
@@ -26,6 +25,10 @@ class PathLabel_Dataset(Dataset):
         self.is_train = dataset_cfg.is_train
         self.img_mean = [0.485, 0.456, 0.406]
         self.img_std = [0.229, 0.224, 0.225]
+        self.task_type = dataset_cfg.task_type
+        self.data_file = dataset_cfg.data_file
+        self.img_label_list = self._parse_data_file()
+
         self.tfms = build_transform(dataset_cfg.data_aug)
         # self.tfms = transforms.Compose([
         #     transforms.Resize((int(380), int(380))),
@@ -41,7 +44,13 @@ class PathLabel_Dataset(Dataset):
             # print(img)
             img = self.tfms(img)
             # print(img)
-            return img, torch.tensor(int(img_label), dtype=torch.int64)
+            if self.task_type == "multi_class":
+                return img, torch.tensor(int(img_label), dtype=torch.int64)
+            elif self.task_type == "multi_label":
+                label = [0] * self.num_classes
+                for i in img_label:
+                    label[int(i)] = 1
+                return img, torch.tensor(label, dtype=torch.float)
         except:
             traceback.print_exc()
             self.__getitem__(index + 1)
@@ -50,13 +59,26 @@ class PathLabel_Dataset(Dataset):
         return len(self.img_label_list) - 1
 
     def _get_num_class(self):
-        return len(set([label for _, label in self.img_label_list]))
+        if self.task_type == "multi_class":
+            return len(set([label for _, label in self.img_label_list]))
+        elif self.task_type == "multi_label":
+            # print(self.is_train, set([label for _, labels in self.img_label_list for label in labels]))
+            return len(set([label for _, labels in self.img_label_list for label in labels]))
 
-    def _parse_data_file(self, data_file):
+    def _parse_data_file(self):
         # print(data_file)
-        with open(data_file, "r") as f:
-            return [line.strip().split("\t") for line in f.readlines() if len(line.strip().split("\t")) == 2]
-
+        with open(self.data_file, "r") as f:
+            if self.task_type == "multi_class":
+                return [line.strip().split("\t") for line in f.readlines() if len(line.strip().split("\t")) == 2]
+            elif self.task_type == "multi_label":
+                path_labels_list = []
+                lines = f.readlines()
+                for line in lines:
+                    line = line.strip()
+                    path = line.split("\t")[0]
+                    labels = line.split("\t")[1:]
+                    path_labels_list.append([path, labels])
+                return path_labels_list
 
 class ImageFold_Dataset(Dataset):
     pass

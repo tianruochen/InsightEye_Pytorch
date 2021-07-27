@@ -9,6 +9,7 @@ import json
 import math
 import logging
 import datetime
+from collections import OrderedDict
 
 import torch
 import random
@@ -37,14 +38,15 @@ class Base:
         self.logger = self._setup_logger()
         # set up device
         self.device, self.device_ids = self._setup_device(self.n_gpus)
+        self.cls_num = self.arch.args.num_classes
 
         # build id to name mapping
         self.id2name = self._build_label_class(self.id2name_path)
-        self.cls_num = len(self.id2name)
+        # self.cls_num = len(self.id2name)
 
         # build model
         self.model = build_model(self.arch.type, self.arch.args)
-        if len(self.device_ids) > 0:
+        if len(self.device_ids) > 1:
             self.model = torch.nn.DataParallel(self.model, device_ids=self.device_ids)
         self.model.to(self.device)
 
@@ -110,6 +112,7 @@ class Base:
             # else:
             #     raise ValueError("classes num error")
         else:
+            assert self.cls_num, "class num is not explicit!"
             for i in range(self.cls_num):
                 id2name[str(i)] = "class_" + str(i)
             return id2name
@@ -129,7 +132,18 @@ class Base:
             self.logger.warning(
                 'Warning: Architecture configuration given in config file is different from that of checkpoint. ' + \
                 'This may yield an exception while state_dict is being loaded.')
-        self.model.load_state_dict(checkpoint['state_dict'], strict=True)
+        if self.n_gpus > 1:
+            self.model.load_state_dict(checkpoint['state_dict'], strict=True)
+        else:
+            new_state_dict = OrderedDict()
+            for k, v in checkpoint['state_dict'].items():
+                if not k.startswith("module."):
+                    break
+                name = k[7:]
+                new_state_dict[name] = v
+            state_dict = new_state_dict if new_state_dict else checkpoint['state_dict']
+            self.model.load_state_dict(state_dict, strict=True)
+
 
         # # load optimizer state from checkpoint only when optimizer type is not changed.
         # if checkpoint['config']['optimizer']['type'] != self.config['optimizer']['type']:
@@ -148,4 +162,16 @@ class Base:
         :return:
         """
         print(best_model_path)
-        self.model.load_state_dict(torch.load(best_model_path))
+        checkpoint = torch.load(best_model_path)
+        if self.n_gpus > 1:
+            self.model.load_state_dict(checkpoint, strict=True)
+        else:
+            new_state_dict = OrderedDict()
+            for k, v in checkpoint.items():
+                if not k.startswith("module."):
+                    break
+                name = k[7:]
+                new_state_dict[name] = v
+            state_dict = new_state_dict if new_state_dict else checkpoint
+            self.model.load_state_dict(state_dict, strict=True)
+        # self.model.load_state_dict(torch.load(best_model_path))

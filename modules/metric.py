@@ -75,7 +75,7 @@ def auc(outputs, targets):
 #     return metrics
 
 
-class Metrics:
+class CommonMetrics:
     def __init__(self, cls_nums):
         self.eps = 1e-7
         self.cls_nums = cls_nums
@@ -115,14 +115,76 @@ class Metrics:
 
         gt_label = np.array(self.gt_label)
         pd_label = np.array(self.pd_label)
+        # roc_cuc_score 不支持多标签任务
         avg_auc = roc_auc_score(gt_label, pd_label)
+        auc_for_class = [roc_auc_score(gt_label[:, i], pd_label[:, i]) for i in range(self.cls_nums)]
         acc_for_class = [matched / (total + self.eps) for matched, total in zip(self.right_num_for_class, self.total_num_for_class)]
-        return avg_loss, avg_acc, avg_auc, acc_for_class
+        return avg_loss, avg_acc, avg_auc, acc_for_class, auc_for_class
+
+
+class MultiLabel_Metrics:
+    def __init__(self, cls_nums):
+        self.eps = 1e-7
+        self.cls_nums = cls_nums
+        self.reset()
+
+    def update(self, batch_pred, batch_label, batch_loss):
+        """
+        :param pred: logits without sigmoid (bs, cls_nums)
+        :param label:  one_hot (bs, cls_nums)
+        :param loss: scalar
+        :return:
+        """
+        batch_count = batch_pred.shape[0]
+        self.img_nums += batch_count
+        self.lose_sum += batch_loss
+        batch_pred = F.sigmoid(batch_pred)
+        # batch_label = batch_label.cpu().tolist()
+        self.pd_label.extend(batch_pred.cpu().tolist())
+        self.gt_label.extend(batch_label.cpu().tolist())
+        top1_batch_matched = 0
+
+        for i in range(batch_count):
+            # temp_one_hot = [0] * self.cls_nums
+            # temp_one_hot[label[i]] = 1
+
+            # self.total_num_for_class += label
+
+            if batch_label[i][torch.argmax(batch_pred[i])] == 1:
+                # self.right_num_for_class[label[i]] += 1
+                top1_batch_matched += 1
+        self.top1_total_matched += top1_batch_matched
+        top1_batch_accuracy = top1_batch_matched / (batch_count + self.eps)
+        return top1_batch_accuracy, top1_batch_matched
+
+    def reset(self):
+        self.img_nums = 0
+        self.lose_sum = 0
+        self.top1_total_matched = 0
+        self.gt_label = []
+        self.pd_label = []
+        self.error_pd = {}
+        # self.right_num_for_class = [0] * self.cls_nums
+        self.total_num_for_class = [0] * self.cls_nums
+
+    def report(self):
+        avg_loss = self.lose_sum / (self.img_nums + self.eps)
+        top1_acc = self.top1_total_matched / (self.img_nums + self.eps)
+
+        gt_label = np.array(self.gt_label)
+        pd_label = np.array(self.pd_label)
+        auc_for_class = [roc_auc_score(gt_label[:, i], pd_label[:, i]) for i in range(self.cls_nums)]
+        avg_auc = sum(auc_for_class) / self.cls_nums
+        acc_for_class = None
+        return avg_loss, top1_acc, avg_auc, acc_for_class, auc_for_class
+
 
 
 
 METRICS_FACTORY = {
-   "common": Metrics
+    "common": CommonMetrics,
+    "multi_class": CommonMetrics,
+    "multi_label": MultiLabel_Metrics
 }
 
 

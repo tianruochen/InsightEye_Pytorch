@@ -12,6 +12,8 @@ import torch.nn.functional as F
 from torch import nn
 from PIL import Image
 from efficientnet_pytorch import EfficientNet
+from efficientnet_pytorch.model import MBConvBlock
+from efficientnet_pytorch.utils import Swish, MemoryEfficientSwish
 from torchvision import transforms
 
 
@@ -51,6 +53,13 @@ class Efficietnet_b5(nn.Module):
         # x = self._dropout(x)
         x = self._fc(x)
         return x
+
+    def set_swish(self, memory_efficient=True):
+        # self.basemodel1.set_swish(False)
+        self.basemodel1._swish = MemoryEfficientSwish() if memory_efficient else Swish()
+        for name, module in self.basemodel1.named_modules():
+            if isinstance(module, MBConvBlock):
+                module._swish = MemoryEfficientSwish() if memory_efficient else Swish()
 
 
 class Efficietnet_b6(nn.Module):
