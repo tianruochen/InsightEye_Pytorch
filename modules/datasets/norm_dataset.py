@@ -10,9 +10,13 @@ import numpy as np
 import traceback
 
 from PIL import Image
+from PIL import ImageFile
 from torch.utils.data import Dataset
 
 from modules.datasets.argument import build_transform
+
+Image.MAX_IMAGE_PIXELS = None
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 class PathLabel_Dataset(Dataset):
@@ -22,7 +26,7 @@ class PathLabel_Dataset(Dataset):
         # random.shuffle(self.img_label_list)
         # self.img_label_list = self.img_label_list[:1000]
         # print(len(self.img_label_list))
-        self.is_train = dataset_cfg.is_train
+        self.loader_mode = dataset_cfg.loader_mode
         self.img_mean = [0.485, 0.456, 0.406]
         self.img_std = [0.229, 0.224, 0.225]
         self.task_type = dataset_cfg.task_type
@@ -40,18 +44,21 @@ class PathLabel_Dataset(Dataset):
     def __getitem__(self, index):
         try:
             img_path, img_label = self.img_label_list[index]
+            # print(img_path)
             img = Image.open(img_path).convert("RGB")
             # print(img)
             img = self.tfms(img)
             # print(img)
             if self.task_type == "multi_class":
-                return img, torch.tensor(int(img_label), dtype=torch.int64)
+                # 这里一定要把label封装到list中，因为在collate_fn中会有cat操作！！
+                return img, torch.tensor([int(img_label)], dtype=torch.int64), img_path
             elif self.task_type == "multi_label":
                 label = [0] * self.num_classes
                 for i in img_label:
                     label[int(i)] = 1
-                return img, torch.tensor(label, dtype=torch.float)
+                return img, torch.tensor(label, dtype=torch.float), img_path
         except:
+            print(f"ERROR IMAGE !!!!  path:  {img_path}")
             traceback.print_exc()
             self.__getitem__(index + 1)
 
@@ -66,10 +73,18 @@ class PathLabel_Dataset(Dataset):
             return len(set([label for _, labels in self.img_label_list for label in labels]))
 
     def _parse_data_file(self):
-        # print(data_file)
-        with open(self.data_file, "r") as f:
+        with open(self.data_file) as f:
             if self.task_type == "multi_class":
-                return [line.strip().split("\t") for line in f.readlines() if len(line.strip().split("\t")) == 2]
+                path_labels_list = [line.strip().split("\t") for line in f.readlines() if len(line.strip().split("\t")) == 2]
+                if self.loader_mode in ["train", "valid"]:    # train valid mode must have label
+                    return path_labels_list
+                else:    # infer mode. label in not necessary in infer mode
+                    # 这里有个坑， 一定要把文件指针seek到文件起始位置。否则no_label_paths将会是个空列表
+                    f.seek(0)
+                    no_label_paths = [line.strip() for line in f.readlines() if len(line.strip().split("\t")) == 1]
+                    path_plabels_list = [[path] + [str(-1)] for path in no_label_paths]
+                    assert not (path_plabels_list and path_labels_list), "format error!"
+                    return path_labels_list if path_labels_list else path_plabels_list
             elif self.task_type == "multi_label":
                 path_labels_list = []
                 lines = f.readlines()

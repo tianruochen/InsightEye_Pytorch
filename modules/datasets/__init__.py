@@ -3,17 +3,19 @@
 # @FileName :__init__.py.py
 # @Time     :2021/3/26 上午11:49
 # @Author   :Chang Qing
- 
-from modules.datasets.dataloader import NormDataLoader, LmdbDataLoader
+
+from modules.datasets.semi_dataloader import SemiDataLoader
+from modules.datasets.norm_dataloader import NormDataLoader, LmdbDataLoader
 
 DATALOADER_FACTORY = {
     "normdataloader": NormDataLoader,
-    "lmdbdataloader": LmdbDataLoader
+    "lmdbdataloader": LmdbDataLoader,
+    "semidataloader": SemiDataLoader
 }
 
 
 def build_dataloader(type, args):
-    # print(type)
-    # print(args)
     loader = DATALOADER_FACTORY[type](**args)
-    return loader.train_loader, loader.valid_loader
+    if type == "semidataloader":
+        return loader.labeled_dataloader, loader.unlabeled_dataloader, loader.valid_dataloader
+    return loader.train_dataloader, loader.valid_dataloader

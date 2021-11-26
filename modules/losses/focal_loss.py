@@ -14,7 +14,6 @@ class FocalLoss(nn.Module):
     """
     This is a implementation of Focal Loss
     """
-
     def __init__(self, class_num, alpha=None, gamma=2, size_average=True):
         super(FocalLoss, self).__init__()
         self.class_num = class_num

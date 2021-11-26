@@ -6,9 +6,7 @@
 
 import os
 import json
-import math
 import logging
-import datetime
 from collections import OrderedDict
 
 import torch
@@ -26,7 +24,8 @@ class Base:
         # basic
         self.name = self.basic.name
         self.version = self.basic.version
-        self.task = self.basic.task
+        self.task_name = self.basic.task_name
+        self.task_type = self.basic.task_type
         self.seed = self.basic.seed
         self.n_gpus = self.basic.n_gpus
         self.id2name_path = self.basic.id2name
@@ -35,28 +34,40 @@ class Base:
         if self.seed:
             self._fix_random_seed()
 
+        # set up logger
         self.logger = self._setup_logger()
+
         # set up device
         self.device, self.device_ids = self._setup_device(self.n_gpus)
-        self.cls_num = self.arch.args.num_classes
+        self.num_classes = self.arch.args.num_classes
 
         # build id to name mapping
         self.id2name = self._build_label_class(self.id2name_path)
-        # self.cls_num = len(self.id2name)
+        assert self.num_classes == len(self.id2name), f"ERROR! cls num not match {self.num_classes} != {len(self.id2name)}"
 
         # build model
-        self.model = build_model(self.arch.type, self.arch.args)
+        self.use_ema = self.arch.use_ema
+        self.ema_decay = self.arch.ema_decay
+        self.model = build_model(self.arch.arch_type, self.arch.args)
+
         if len(self.device_ids) > 1:
             self.model = torch.nn.DataParallel(self.model, device_ids=self.device_ids)
         self.model.to(self.device)
 
-        # load checkpoint
-        if self.arch.get("resume", None):
-            self.logger.info("resume checkpoint...")
-            self._resume_checkpoint(self.arch.resume)
-        elif self.arch.get("best_model", None):
-            self.logger.info("load best model.....")
-            self._load_best_model(self.arch.best_model)
+        # # use_ema
+        # self.ema_model = None
+        # if self.use_ema and self.ema_decay:
+        #     from modules.models.ema import ModelEMA
+        #     self.logger.info("Use ema model ... ")
+        #     self.ema_model = ModelEMA(self.model, self.ema_decay, self.device)
+
+        # # load checkpoint
+        # if self.arch.get("resume", None):
+        #     self.logger.info("resume checkpoint...")
+        #     self._resume_checkpoint(self.arch.resume)
+        # elif self.arch.get("best_model", None):
+        #     self.logger.info("load best model.....")
+        #     self._load_best_model(self.arch.best_model)
 
     def _fix_random_seed(self):
         random.seed(self.seed)
@@ -87,16 +98,15 @@ class Base:
             self.logger.warning(
                 "Warning: There\'s no GPU available on this machine, training will be performed on CPU.")
         elif n_gpu_need > n_gpu_available:
-            n_gpu_need = n_gpu_available
             self.logger.warning(
                 "Warning: The number of GPU\'s configured to use is {}, but only {} are available on this machine.".format(
                     n_gpu_need, n_gpu_available))
+            n_gpu_need = n_gpu_available
         if n_gpu_need == 0:
             self.logger.info("run models on CPU.")
         else:
             logging.info(f"run model on {n_gpu_need} gpu(s)")
             # gpu_list_str = os.environ["CUDA_VISIBLE_DEVICES"]
-
             # gpu_list_ids = [int(i) for i in gpu_list_str.split(",")][:n_gpu_need]
             gpu_list_ids = [int(i) for i in range(n_gpu_need)]
         device = torch.device("cuda" if n_gpu_need > 0 else "cpu")
@@ -112,8 +122,8 @@ class Base:
             # else:
             #     raise ValueError("classes num error")
         else:
-            assert self.cls_num, "class num is not explicit!"
-            for i in range(self.cls_num):
+            assert self.num_classes, "class num is not explicit!"
+            for i in range(self.num_classes):
                 id2name[str(i)] = "class_" + str(i)
             return id2name
 
@@ -144,6 +154,9 @@ class Base:
             state_dict = new_state_dict if new_state_dict else checkpoint['state_dict']
             self.model.load_state_dict(state_dict, strict=True)
 
+        # resume ema model
+        if self.use_ema:
+            self.ema_model.ema.load_state_dict(checkpoint['ema_state_dict'])
 
         # # load optimizer state from checkpoint only when optimizer type is not changed.
         # if checkpoint['config']['optimizer']['type'] != self.config['optimizer']['type']:

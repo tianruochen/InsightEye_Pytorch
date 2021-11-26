@@ -18,12 +18,12 @@ import onnxruntime
 import numpy as np
 
 from PIL import Image
-from modules.trainer.inferer import Predictor
-from utils.config_util import parse_config, merge_config_bak
+from modules.solver.inferer import Inferer
+from utils.config_util import parse_config, merge_config
 
 
 def transform_to_onnx(batch_size, config):
-    predictor = Predictor(config)
+    predictor = Inferer(config)
     model = predictor.model
     # set_swish useful only for efficientnet !!!
     model.set_swish(memory_efficient=False)
@@ -98,7 +98,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     config = parse_config(args.infer_config)
-    config = merge_config_bak(config, vars(args))
+    config = merge_config(config, vars(args))
 
     batch_size = 1
     # convert to onnx model

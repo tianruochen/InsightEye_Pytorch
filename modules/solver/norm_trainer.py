@@ -1,44 +1,96 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
-# @FileName :trainer.py.py
-# @Time     :2021/3/26 上午11:48
+# @FileName :trainer.py
+# @Time     :2021/3/26 上午11:50
 # @Author   :Chang Qing
 
-import warnings
-
-warnings.filterwarnings("ignore")
+import logging
+import datetime
 
 import torch
-import numpy as np
-from tqdm import tqdm
-import torch.nn.functional as F
-from torchvision.utils import make_grid
-from modules.trainer.base_trainer import BaseTrainer
+
+from time import time
+from modules.solver.trainer import Trainer
+from modules.datasets import build_dataloader
 
 
 # ------------------------------------------------------------------------------
 #  Poly learning-rate Scheduler
 # ------------------------------------------------------------------------------
-def poly_lr_scheduler(optimizer, init_lr, curr_iter, max_iter, power=0.9):
-    for g in optimizer.param_groups:
-        g['lr'] = init_lr * (1 - curr_iter / max_iter) ** power
+# def poly_lr_scheduler(optimizer, init_lr, curr_iter, max_iter, power=0.9):
+#     for g in optimizer.param_groups:
+#         g['lr'] = init_lr * (1 - curr_iter / max_iter) ** power
 
 
 # ------------------------------------------------------------------------------
 #   Class of Trainer
 # ------------------------------------------------------------------------------
+class NormTrainer(Trainer):
 
-
-class Trainer(BaseTrainer):
     def __init__(self, config):
-        super(Trainer, self).__init__(config)
-        self.config = config
+        super(NormTrainer, self).__init__(config)
+        # build dataloader
+        self.config.loader.args["task_type"] = self.task_type
+        self.train_loader, self.valid_loader = build_dataloader(self.config.loader.type, self.config.loader.args)
+        assert self.train_loader.dataset.num_classes == self.valid_loader.dataset.num_classes, \
+            f"train class num != valid class num:  {self.train_loader.dataset.num_classes} != " \
+            f"{self.valid_loader.dataset.num_classes}"
+        assert self.num_classes == self.train_loader.dataset.num_classes, \
+            f"self.num_classes != train class num:  {self.num_classes} != " \
+            f"{self.train_loader.dataset.num_classes}"
 
-    def _eval_metrics(self, output, target):
-        acc_metrics = np.zeros(len(self.metrics))
-        for i, metric in enumerate(self.metrics):
-            acc_metrics[i] += metric(output, target)
-        return acc_metrics
+        self.do_validation = self.valid_loader is not None
+        self.max_iter = len(self.train_loader) * self.epochs
+
+
+    def train(self):
+        for epoch in range(self.start_epoch, self.epochs + 1):
+            self.logger.info("\n----------------------------------------------------------------")
+            self.logger.info("[EPOCH %d]" % (epoch))
+            start_time = time()
+            result = self._train_epoch(epoch)
+            finish_time = time()
+            self.logger.info(
+                "Finish at {}, Runtime: {:.3f} [s]".format(datetime.datetime.now(), finish_time - start_time))
+
+            # save logged informations into log dict
+            # log = {}
+            # print(result)
+            # for key, value in result.items():
+            #     if key == 'train_metrics':
+            #         log.update({'train_' + mtr.__name__: value[i] for i, mtr in enumerate(self.metrics)})
+            #     elif key == 'valid_metrics':
+            #         log.update({'valid_' + mtr.__name__: value[i] for i, mtr in enumerate(self.metrics)})
+            #     else:
+            #         log[key] = value
+
+            # print logged informations to the screen
+            if self.results_log is not None:
+                self.results_log.add_entry(result)
+                if self.verbosity >= 1:
+                    self.logger.info(f"=====================The results of epoch:  {epoch} ===================")
+                    for key, value in sorted(list(result.items())):
+                        self.logger.info('              {:25s}: {}'.format(str(key), value))
+                    self.logger.info(f"=============================Report Done ================================")
+            # evaluate model performance according to configured metric, save best checkpoint as model_best
+            best = False
+            if self.monitor_mode != 'off':
+                try:
+                    if (self.monitor_mode == 'min' and result[self.monitor] < self.monitor_best) or \
+                            (self.monitor_mode == 'max' and result[self.monitor] > self.monitor_best):
+                        self.logger.info("Monitor improved from %f to %f" % (self.monitor_best, result[self.monitor]))
+                        self.monitor_best = result[self.monitor]
+                        best = True
+                except KeyError:
+                    if epoch == 1:
+                        msg = "Warning: Can\'t recognize metric named '{}' ".format(self.monitor) \
+                              + "for performance monitoring. model_best checkpoint won\'t be updated."
+                        self.logger.warning(msg)
+
+            # Save checkpoint
+            self._save_checkpoint(epoch, save_best=best)
+        logging.info("******************Training Done..*********************")
+        self._save_results_log()
 
     def _train_epoch(self, epoch):
         """
@@ -67,7 +119,8 @@ class Trainer(BaseTrainer):
         # total_metrics = np.zeros(len(self.metrics))
         n_iter = len(self.train_loader)
         batch_count = len(self.train_loader)
-        for batch_idx, (data, target) in enumerate(self.train_loader):
+        # (img_tensors, label_tensors, img_paths)
+        for batch_idx, (data, target, _) in enumerate(self.train_loader):
             # print(data.shape, target.shape)
             curr_iter = batch_idx + (epoch - 1) * n_iter
             data, target = data.to(self.device), target.to(self.device)
@@ -76,6 +129,11 @@ class Trainer(BaseTrainer):
             loss = self.loss(output, target)
             loss.backward()
             self.optimizer.step()
+
+            # update ema model
+            if self.use_ema and self.ema_model:
+                self.ema_model.update(self.model)
+            self.model.zero_grad()
 
             batch_accuracy, batch_matched = self.metrics.update(output, target, loss.item())
             # total_loss += loss.item()
@@ -109,7 +167,7 @@ class Trainer(BaseTrainer):
             #         # self.writer_train.add_image('train/output', make_grid(output.cpu(), nrow=4, normalize=True))
             #         self.writer_train.add_image('train/output', make_grid(output.cpu(), nrow=4, normalize=True))
 
-            poly_lr_scheduler(self.optimizer, self.init_lr, curr_iter, self.max_iter, power=0.9)
+            self.poly_lr_scheduler(self.optimizer, self.init_lr, curr_iter, self.max_iter, power=0.9)
 
         # Record log
         avg_loss, avg_acc, avg_auc, acc_for_class, auc_for_class = self.metrics.report()
@@ -129,10 +187,10 @@ class Trainer(BaseTrainer):
             self.writer_train.add_scalar("train_auc", avg_auc)
             if acc_for_class:
                 for class_i, class_acc in enumerate(acc_for_class):
-                    self.writer_train.add_scalar('train_acc_for_/%s' % (self.label2name[str(class_i)]), class_acc)
+                    self.writer_train.add_scalar('train_acc_for_/%s' % (self.id2name[str(class_i)]), class_acc)
             if auc_for_class:
                 for class_i, class_auc in enumerate(auc_for_class):
-                    self.writer_train.add_scalar('train_acc_for_/%s' % (self.label2name[str(class_i)]), class_auc)
+                    self.writer_train.add_scalar('train_acc_for_/%s' % (self.id2name[str(class_i)]), class_auc)
 
             if self.verbosity >= 2:
                 for i in range(len(self.optimizer.param_groups)):
@@ -140,7 +198,8 @@ class Trainer(BaseTrainer):
 
         # Perform validating
         if self.do_validation:
-            self.logger.info(f"*****************************Validation on epoch {epoch}...*****************************")
+            self.logger.info(
+                f"*****************************Validation on epoch {epoch}...*****************************")
             val_log = self._valid_epoch(epoch)
             log = {**log, **val_log}
 
@@ -153,13 +212,15 @@ class Trainer(BaseTrainer):
     def _valid_epoch(self, epoch):
         """
         Validate after training an epoch
-
         :return: A log that contains information about validation
-
         Note:
             The validation metrics in log must have the key 'valid_metrics'.
         """
-        self.model.eval()
+        if self.use_ema:
+            test_model = self.ema_model.ema
+        else:
+            test_model = self.model
+        test_model.eval()
         self.metrics.reset()
         # total_val_loss = 0
         # total_val_metrics = np.zeros(len(self.metrics))
@@ -169,9 +230,9 @@ class Trainer(BaseTrainer):
 
         with torch.no_grad():
             # Validate
-            for batch_idx, (data, target) in enumerate(self.valid_loader):
+            for batch_idx, (data, target, _) in enumerate(self.valid_loader):
                 data, target = data.to(self.device), target.to(self.device)
-                output = self.model(data)
+                output = test_model(data)
                 loss = self.loss(output, target)
                 self.metrics.update(output, target, loss.item())
 
@@ -211,9 +272,8 @@ class Trainer(BaseTrainer):
             self.writer_train.add_scalar("valid_auc", avg_auc)
             if acc_for_class:
                 for class_i, class_acc in enumerate(acc_for_class):
-                    self.writer_train.add_scalar('valid_acc_for_/%s' % (self.label2name[str(class_i)]), class_acc)
+                    self.writer_train.add_scalar('valid_acc_for_/%s' % (self.id2name[str(class_i)]), class_acc)
             if auc_for_class:
                 for class_i, class_auc in enumerate(auc_for_class):
-                    self.writer_train.add_scalar('train_acc_for_/%s' % (self.label2name[str(class_i)]), class_auc)
-
+                    self.writer_train.add_scalar('train_acc_for_/%s' % (self.id2name[str(class_i)]), class_auc)
         return val_log

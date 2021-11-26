@@ -14,7 +14,7 @@ import argparse
 from waitress import serve
 from flask import Flask, request, jsonify
 
-from modules.trainer.inferer import Predictor
+from modules.solver.inferer import Predictor
 from utils.comm_util import get_time_str
 from utils.config_util import parse_config
 from utils.server_util import log_info

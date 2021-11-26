@@ -18,7 +18,7 @@ MODEL_FACTORY = {
     "efficentnet": get_efficientnet
 }
 
-TIMM_MODEL_ZOO = open("model_name.list").read().split("\n")
+TIMM_MODEL_ZOO = open("modules/models/model_name.list").read().split("\n")
 
 def build_model(name, args):
     name, level = name.split("_")

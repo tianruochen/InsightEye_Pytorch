@@ -1,15 +1,20 @@
-name: InsightEye
-version: 1.0
-task: "ImageTag"
-task_type: "multi_class"
-label2name: "configs/label2name/image_tag.json"
+basic:
+  name: InsightEye
+  version: 1.0
+  task_name: "ImageTag_cls47"
+  task_type: "multi_class"
+  n_gpus: 7
+  seed: 666
+  id2name: "configs/label2name/imgtag_cls47_idx2name.json"
 
 arch:
-  type: efficentnet_b5
+  arch_type: efficentnet_b5
   resume: ""
   best_model: ""
   args:
-    num_classes: 26
+    num_classes: 47
+  use_ema: true
+  ema_decay: 0.999
 
 loader:
   type: normdataloader
@@ -17,8 +22,8 @@ loader:
     img_fmt: rgb
     dataset_name: path_label
     train_data:
-      data_file: "/data1/changqing/ZyImage_Data/annotations/image_tag_train_dataset_shuffled.txt"
-      is_train: true
+      data_file: "/data1/changqing/ZyImage_Data/annotations/imgtag_cls47_train_shuffled.txt"
+      loader_mode: train
       data_aug:
         image_resize: 380
         random_crop: true
@@ -32,17 +37,18 @@ loader:
         random_saturation: false
         random_adjust_hue: false
     valid_data:
-      data_file: "/data1/changqing/ZyImage_Data/annotations/image_tag_valid_dataset_shuffled.txt"
-      is_train: false
+      data_file: "/data1/changqing/ZyImage_Data/annotations/imgtag_cls47_valid_shuffled.txt"
+      loader_mode: valid
       data_aug:
         image_resize: 380
     batch_size: 64
     pin_memory: true
-    num_workers: 2
+    num_workers: 4
 
 solver:
-  n_gpus: 8
   epochs: 30
+  use_ema: False
+  ema_decay: 0.999
   optimizer:
     type: SGD
     args:
@@ -53,13 +59,13 @@ solver:
     args:
       step_size: 12
       gamma: 0.1
-  save_dir: "train_log"
+  save_dir: "workshop"
   ckpt_dir: "ckpt"
   log_dir: "log"
   save_max: 5
   save_freq:
-  valid_interval: 1
-  log_interval:
+  valid_interval:
+  log_interval: 1
   verbosity: 1
   monitor: "valid_acc"
   monitor_mode: "max"

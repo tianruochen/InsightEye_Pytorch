@@ -7,7 +7,8 @@
 from torch.utils.data import Dataset
 from torchvision.datasets import ImageFolder
 from torch.utils.data import DataLoader
-from modules.datasets.dataset import build_dataset
+from modules.datasets.norm_dataset import build_dataset
+from modules.datasets.custom_collate_fn import PathLabelCollate
 
 
 class NormDataLoader:
@@ -25,27 +26,35 @@ class NormDataLoader:
         self.pin_memory = pin_memory
         self.num_workers = num_workers
 
-        self.train_dataset = build_dataset(dataset_name, self.train_data)
-        self.valid_dataset = build_dataset(dataset_name, self.valid_data)
+        self.train_dataset = build_dataset(dataset_name, self.train_data) if self.train_data else None
+        self.valid_dataset = build_dataset(dataset_name, self.valid_data) if self.valid_data else None
+        self.collate_fn = PathLabelCollate()
 
     @property
-    def train_loader(self):
+    def train_dataloader(self):
+        if not self.train_dataset:
+            return None
         return DataLoader(
             dataset=self.train_dataset,
             batch_size=self.batch_size,
             shuffle=True,
             num_workers=self.num_workers,
-            pin_memory=self.pin_memory
+            pin_memory=self.pin_memory,
+            drop_last=True,
+            collate_fn=self.collate_fn
         )
 
     @property
-    def valid_loader(self):
+    def valid_dataloader(self):
+        if not self.valid_dataset:
+            return None
         return DataLoader(
             dataset=self.valid_dataset,
             batch_size=self.batch_size,
             shuffle=False,
             num_workers=self.num_workers,
-            pin_memory=self.pin_memory
+            pin_memory=self.pin_memory,
+            collate_fn=self.collate_fn
         )
 
 

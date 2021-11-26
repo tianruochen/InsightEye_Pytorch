@@ -16,7 +16,7 @@ from time import time
 from collections import deque
 from modules.models import build_model
 from modules.datasets import build_dataloader
-from modules.solver import build_optimizer, build_lr_scheduler
+from modules.solver.optimer import build_optimizer, build_lr_scheduler
 from modules.losses import build_loss
 from modules.metric import build_metrics
 from utils.comm_util import ResultsLog
@@ -251,6 +251,7 @@ class BaseTrainer:
             'epoch': epoch,
             'results_log': self.results_log,
             'state_dict': self.model.state_dict(),
+            # 'ema_state_dict': self.ema.state_dict() if self.use_ema else None
             'optimizer': self.optimizer.state_dict(),
             'monitor_best': self.monitor_best,
             # 'config': self.config

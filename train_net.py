@@ -6,10 +6,10 @@
  
 import os
 import argparse
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3,4,5,6,7"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "5,6,7,8"
 
-from modules.trainer.trainer import Trainer
-from utils.comm_util import setup_logger, setup_device
+from modules.solver.norm_trainer import NormTrainer
+from modules.solver.semi_trainer import SemiTrainer
 from utils.config_util import parse_config, merge_config, print_config
 
 
@@ -17,7 +17,7 @@ def parse_args():
 
     parser = argparse.ArgumentParser(description="Classification Network Training Script")
 
-    parser.add_argument("--model_config", type=str, default="configs/model_config/image_tag_multi_class.yaml", help="path to config file")
+    parser.add_argument("--model_config", type=str, default="configs/model_config/imgtag_semi_supervised_train.yaml", help="path to config file")
     parser.add_argument("--batch_size", type=int, default=None, help="training batch size, None to use config setting")
     parser.add_argument("--learning_rate", type=float, default=None,
                         help="training learning rate, None to use config setting")
@@ -41,6 +41,8 @@ if __name__ == "__main__":
     config = parse_config(args.model_config)
     config = merge_config(config, vars(args))
     # print_config(config)
-
-    trainer = Trainer(config)
+    if config.basic.task_type == "semi_supervised":
+        trainer = SemiTrainer(config)
+    else:
+        trainer = NormTrainer(config)
     trainer.train()

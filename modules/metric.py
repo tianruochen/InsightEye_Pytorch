@@ -81,11 +81,11 @@ class CommonMetrics:
         self.cls_nums = cls_nums
         self.reset()
 
-    def update(self, pred, label, loss):
+    def update(self, pred, label, loss=-1.0):
         batch_count = pred.shape[0]
         self.img_nums += batch_count
         self.lose_sum += loss
-        pred = F.softmax(pred)
+        pred = F.softmax(pred, dim=1)
         self.pd_label.extend(pred.cpu().tolist())
         batch_matched = 0
 

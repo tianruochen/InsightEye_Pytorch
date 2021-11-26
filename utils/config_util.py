@@ -13,7 +13,7 @@ import logging
 
 # logger = logging.getLogger(__name__)
 
-__all__ = ["parse_config", "merge_config", "print_config", "merge_config_bak"]
+__all__ = ["parse_config", "merge_config", "print_config"]
 
 
 class AttrDict(dict):
@@ -41,60 +41,64 @@ def parse_config(cfg_file):
     return obj_dict_conf
 
 
-def merge_config_bak(cfg, args_dict):
-    try:
-        basic_cfg_node = getattr(cfg, "basic")
-        arch_cfg_node = getattr(cfg, "arch")
-        scheme_cfg_node = getattr(cfg, "scheme")
-        for key, value in args_dict.items():
-            if not value:
-                continue
+def merge_config(cfg, args_dict):
+    basic_cfg_node = getattr(cfg, "basic")
+    arch_cfg_node = getattr(cfg, "arch")
+    solver_cfg_node = getattr(cfg, "solver")
+    for key, value in args_dict.items():
+        if not value:
+            continue
+        try:
             if hasattr(basic_cfg_node, key):
                 setattr(basic_cfg_node, key, value)
+        except Exception as e:
+            pass
+        try:
             if hasattr(arch_cfg_node, key):
                 setattr(arch_cfg_node, key, value)
-            if hasattr(scheme_cfg_node, key):
-                setattr(scheme_cfg_node, key, value)
-    except Exception as e:
-        # print(e)
-        # traceback.print_exc()
-        pass
+        except Exception as e:
+            pass
+        try:
+            if hasattr(solver_cfg_node, key):
+                setattr(solver_cfg_node, key, value)
+        except Exception as e:
+            pass
     return cfg
 
 
-def merge_config(cfg, args_dict, mode="train"):
-    if mode == "train":
-        loader_cfg_node = getattr(cfg, "loader")
-        trainer_cfg_node = getattr(cfg, "solver")
-        for key, value in args_dict.items():
-            if value is None:
-                continue
-            try:
-                if hasattr(loader_cfg_node, key):
-                    setattr(loader_cfg_node, key, value)
-                if hasattr(trainer_cfg_node, key):
-                    setattr(trainer_cfg_node, key, value)
-            except Exception as e:
-                # import traceback
-                # traceback.print_exc()
-                # logger.warning(e)
-                pass
-        # if trainer_cfg_node.save_dir and not os.path.exists(trainer_cfg_node.save_dir):
-        #     os.makedirs(trainer_cfg_node.save_dir, exist_ok=True)
-        return cfg
-    elif mode == "infer":
-        env_cfg_node = getattr(cfg, "env")
-        for key, value in args_dict.items():
-            if value is None:
-                continue
-            try:
-                if hasattr(env_cfg_node, key):
-                    setattr(env_cfg_node, key, value)
-            except Exception as e:
-                # import traceback
-                # traceback.print_exc()
-                pass
-        return cfg
+# def merge_config(cfg, args_dict, mode="train"):
+#     if mode == "train":
+#         loader_cfg_node = getattr(cfg, "loader")
+#         trainer_cfg_node = getattr(cfg, "solver")
+#         for key, value in args_dict.items():
+#             if value is None:
+#                 continue
+#             try:
+#                 if hasattr(loader_cfg_node, key):
+#                     setattr(loader_cfg_node, key, value)
+#                 if hasattr(trainer_cfg_node, key):
+#                     setattr(trainer_cfg_node, key, value)
+#             except Exception as e:
+#                 # import traceback
+#                 # traceback.print_exc()
+#                 # logger.warning(e)
+#                 pass
+#         # if trainer_cfg_node.save_dir and not os.path.exists(trainer_cfg_node.save_dir):
+#         #     os.makedirs(trainer_cfg_node.save_dir, exist_ok=True)
+#         return cfg
+#     elif mode == "infer":
+#         env_cfg_node = getattr(cfg, "env")
+#         for key, value in args_dict.items():
+#             if value is None:
+#                 continue
+#             try:
+#                 if hasattr(env_cfg_node, key):
+#                     setattr(env_cfg_node, key, value)
+#             except Exception as e:
+#                 # import traceback
+#                 # traceback.print_exc()
+#                 pass
+#         return cfg
 
 
 def print_config(config):
@@ -103,3 +107,14 @@ def print_config(config):
     except:
         print(json.dumps(config.__dict__, indent=4))
 
+
+if __name__ == '__main__':
+    # temp_config = {'task_name': 'test', 'task_type': 'multi_class', 'n_gpus': 2,
+    #               'id2name': 'tasks/test/data/id2name.json', 'arch_type': 'efficentnet_b5', 'num_classes': 4,
+    #               'train_file': 'tasks/test/data/train.txt', 'valid_file': 'tasks/test/data/valid.txt', 'batch_size': 4,
+    #               'epochs': 2, 'save_dir': 'tasks/test/workshop'}
+    temp_config = {"batch_size": 1}
+    train_config = parse_config("../configs/model_config/imgtag_multi_class_train.yaml")
+    print(train_config)
+    new_config = merge_config(train_config, temp_config)
+    print(new_config)
